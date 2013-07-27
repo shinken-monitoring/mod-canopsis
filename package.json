@@ -1,10 +1,10 @@
 {
-  "name": "ip-tag",
+  "name": "canopsis",
   "types": ["module"],
   "version": "1.4",
-  "homepage": "http://github.com/shinken-monitoring/mod-ip-tag",
+  "homepage": "http://github.com/shinken-monitoring/mod-canopsis",
   "author": "Jean Gabès",
-  "description": "Tag host by their IP ranges",
+  "description": "anospis hypervisor for event management. - Experimental",
   "contributors": [
     {
       "name": "Jean Gabès",
@@ -15,11 +15,10 @@
       "email": "david.guenault@gmail.com"
     }
   ],
-  "repository": "https://github.com/shinken-monitoring/mod-ip-tag",
+  "repository": "https://github.com/shinken-monitoring/mod-canopsis",
   "keywords": [
     "module",
-    "arbiter",
-    "ip"
+    "broker"
   ],
   "dependencies": {
     "shinken": ">=1.4"
