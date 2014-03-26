@@ -379,7 +379,7 @@ class event2amqp():
 
         # connection management
         if not self.connected():
-            logger.error("[Canopsis] Create connection")
+            logger.info("[Canopsis] Create connection")
             self.create_connection()
             self.connect()
 
