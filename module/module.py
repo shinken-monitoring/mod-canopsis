@@ -31,12 +31,14 @@
 import sys
 import os
 import pickle
+import time
 
 from collections import deque
 
 import traceback
 
 from shinken.basemodule import BaseModule
+from shinken.message import Message
 from shinken.log import logger
 
 try:
@@ -86,6 +88,19 @@ class Canopsis_broker(BaseModule):
         self.queue_dump_frequency = queue_dump_frequency
 
         self.canopsis = event2amqp(self.host, self.port, self.user, self.password, self.virtual_host, self.exchange_name, self.identifier, self.maxqueuelength, queue_dump_frequency)
+
+        self.last_need_data_send = time.time()
+
+    def ask_reinit(self, c_id):
+        # Do not ask data too quickly, very dangerous
+        # one a minute
+        if time.time() - self.last_need_data_send > 60:
+            logger.info('[Canopsis] Ask the broker for instance id (#{0}) data'.format(c_id))
+
+            msg = Message(id=0, type='NeedData', data={'full_instance_id': c_id}, source=self.get_name())
+            self.from_q.put(msg)
+
+            self.last_need_data_send = time.time()
 
     # We call functions like manage_ TYPEOFBROK _brok that return us queries
     def manage_brok(self, b):
@@ -147,7 +162,14 @@ class Canopsis_broker(BaseModule):
         self.service_max_check_attempts[b.data['host_name']][b.data['service_description']] = b.data['max_check_attempts']
 
     def manage_host_check_result_brok(self, b):
-        message = self.create_message('component', 'check', b)
+        try:
+            message = self.create_message('component', 'check', b)
+
+        except Exception, err:
+            logger.error("[Canopsis] Error: there was an error while trying to create message for host")
+            logger.debug('[Canopsis] {0}: {1}'.format(err))
+            return
+
         if not message:
             logger.warning("[Canopsis] Warning: Empty host check message")
         else:
@@ -157,8 +179,11 @@ class Canopsis_broker(BaseModule):
     def manage_service_check_result_brok(self, b):
         try:
             message = self.create_message('resource', 'check', b)
-        except:
+
+        except Exception, err:
             logger.error("[Canopsis] Error: there was an error while trying to create message for service")
+            logger.debug('[Canopsis] {0}: {1}'.format(err))
+            return
 
         if not message:
             logger.warning("[Canopsis] Warning: Empty service check message")
@@ -200,6 +225,16 @@ class Canopsis_broker(BaseModule):
             x           'command_name'
                         'address'
         """
+
+        # Check if we need to re-init the broker
+        reinit_needed = b.data['host_name'] not in self.service_commands
+        reinit_needed = reinit_needed or (source_type == 'resource' and b.data['service_description'] not in self.service_commands[b.data['host_name']])
+
+        if reinit_needed:
+            self.ask_reinit(b.data['instance_id'])
+
+        # Build the message
+
         if source_type == 'resource':
             # service
             specificmessage = {
@@ -277,9 +312,11 @@ class event2amqp():
 
     def create_connection(self):
         self.connection_string = "amqp://%s:%s@%s:%s/%s" % (self.user, self.password, self.host, self.port, self.virtual_host)
+
         try:
             self.connection = BrokerConnection(self.connection_string)
             return True
+
         except:
             func = sys._getframe(1).f_code.co_name
             error = str(sys.exc_info()[0])
@@ -297,6 +334,7 @@ class event2amqp():
                 self.get_exchange()
                 self.create_producer()
                 return True
+
         except:
             func = sys._getframe(1).f_code.co_name
             error = str(sys.exc_info()[0])
@@ -316,12 +354,15 @@ class event2amqp():
 
     def connected(self):
         try:
-            if self.connection.connected:
-                return True
-            else:
-                return False
-        except:
-            return False
+            # Try to establish a connection
+            self.connection._connection = self.connection.transport.establish_connection()
+            self.connection._closed = not self.connection.transport.verify_connection(self.connection._connection)
+
+        except socket.error:
+            # The socket is closed
+            self.connection._closed = True
+
+        return self.connection.connected
 
     def get_channel(self):
         try:
@@ -359,27 +400,23 @@ class event2amqp():
         # process enqueud events if possible
         self.pop_events()
 
+        key = "%s.%s.%s.%s.%s" % (
+            message["connector"],
+            message["connector_name"],
+            message["event_type"],
+            message["source_type"],
+            message["component"]
+        )
+
         if message["source_type"] == "component":
-            key = "%s.%s.%s.%s.%s" % (
-                    message["connector"],
-                    message["connector_name"],
-                    message["event_type"],
-                    message["source_type"],
-                    message["component"]
-                )
-        else:
-            key = "%s.%s.%s.%s.%s[%s]" % (
-                    message["connector"],
-                    message["connector_name"],
-                    message["event_type"],
-                    message["source_type"],
-                    message["component"],
+            key = "%s.%s" % (
+                    key,
                     message["resource"]
                 )
 
         # connection management
         if not self.connected():
-            logger.error("[Canopsis] Create connection")
+            logger.info("[Canopsis] Create connection")
             self.create_connection()
             self.connect()
 
