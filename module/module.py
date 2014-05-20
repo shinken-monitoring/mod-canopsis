@@ -32,6 +32,7 @@ import sys
 import os
 import pickle
 import time
+import socket
 
 from collections import deque
 
@@ -353,6 +354,9 @@ class event2amqp():
             return False
 
     def connected(self):
+        if not self.connection:
+            return False
+
         try:
             # Try to establish a connection
             self.connection._connection = self.connection.transport.establish_connection()
