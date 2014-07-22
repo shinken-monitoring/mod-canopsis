@@ -163,6 +163,8 @@ class Canopsis_broker(BaseModule):
         self.service_max_check_attempts[b.data['host_name']][b.data['service_description']] = b.data['max_check_attempts']
 
     def manage_host_check_result_brok(self, b):
+        message = None
+
         try:
             message = self.create_message('component', 'check', b)
 
@@ -178,6 +180,8 @@ class Canopsis_broker(BaseModule):
 
     # A service check has just arrived. Write the performance data to the file
     def manage_service_check_result_brok(self, b):
+        message = None
+
         try:
             message = self.create_message('resource', 'check', b)
 
