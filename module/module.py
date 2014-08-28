@@ -416,7 +416,7 @@ class event2amqp():
             message["component"]
         )
 
-        if message["source_type"] == "component":
+        if message["source_type"] == "resource":
             key = "%s.%s" % (
                     key,
                     message["resource"]
