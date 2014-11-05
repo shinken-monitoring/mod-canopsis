@@ -26,7 +26,7 @@
 
 # This Class is a plugin for the Shinken Broker. It's job is to write
 # host and service perfdata to a file which can be processes by the
-# canopsis daemon (http://http://www.canopsis.org). It is a reimplementation of canopsis.c
+# canopsis daemon (http://www.canopsis.org). It is a reimplementation of canopsis.c
 
 import sys
 import os
