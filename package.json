@@ -4,7 +4,7 @@
   "version": "1.4",
   "homepage": "http://github.com/shinken-monitoring/mod-canopsis",
   "author": "Jean Gabès",
-  "description": "anospis hypervisor for event management. - Experimental",
+  "description": "Canospis hypervisor for event management. - Experimental",
   "contributors": [
     {
       "name": "Jean Gabès",
